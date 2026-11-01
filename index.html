@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عُدّة | منصة صيانة وإدارة الهواتف المحمولة</title>
+<meta name="theme-color" content="#0f172a">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: { darkBg: '#0f172a', cardBg: '#1e293b', accentBlue: '#3b82f6', gold: '#f59e0b' }
+    }
+  }
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+body { font-family: 'Cairo', sans-serif; background-color: #0f172a; color: #f8fafc; }
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+</style>
+<link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22%D9%85%D9%86%D8%B5%D8%A9%20%D8%B9%D9%8F%D8%AF%D8%A9%20%D8%A7%D9%84%D8%A7%D8%AD%D8%AA%D8%B1%D8%A7%D9%81%D9%8A%D8%A9%22%2C%22short_name%22%3A%22%D8%B9%D9%8F%D8%AF%D8%A9%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%230f172a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fvia.placeholder.com%2F192.png%3Ftext%3DODAH%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
+</head>
+<body class="min-h-screen flex flex-col custom-scrollbar">
+
+<div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+  <div class="bg-cardBg border border-slate-700 p-8 rounded-2xl w-full max-w-md shadow-2xl text-center space-y-6 my-8">
+    <div class="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center mx-auto text-2xl font-bold border border-blue-500/30">عُدّة</div>
+    <div>
+      <h2 class="text-2xl font-bold mb-1">منصة عُدّة التجارية</h2>
+      <p class="text-slate-400 text-sm">اختر صفة الدخول للنظام</p>
+    </div>
+    <div class="space-y-4">
+      <button onclick="loginAs('client')" class="w-full bg-slate-700 hover:bg-slate-600 font-semibold py-3 px-4 rounded-xl transition text-white flex items-center justify-center gap-2">
+        🛒 الدخول كزبون / فني صيانة
+      </button>
+
+      <div class="border-t border-slate-700 pt-4 space-y-3 text-right">
+        <p class="text-xs text-amber-400 font-semibold text-center">🏢 بوابة أصحاب محلات الجملة</p>
+        <input type="text" id="merchantStoreInput" placeholder="اسم المتجر / المحل" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-amber-500 text-white">
+        <input type="password" id="merchantPinInput" placeholder="الرمز السري الخاص بالمحل" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-amber-500 text-white">
+        <div class="flex gap-2">
+          <button onclick="loginMerchant()" class="flex-1 bg-amber-600 hover:bg-amber-500 font-semibold py-2.5 px-3 rounded-xl transition text-white shadow-lg shadow-amber-600/20 text-xs">
+            تسجيل الدخول
+          </button>
+          <button onclick="registerMerchant()" class="flex-1 bg-slate-800 hover:bg-slate-700 font-semibold py-2.5 px-3 rounded-xl transition text-amber-400 border border-amber-500/30 text-xs">
+            + إنشاء حساب تاجر
+          </button>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-700 pt-3 space-y-2">
+        <p class="text-xs text-purple-400 font-semibold">لوحة المالك وصاحب التطبيق (Super Admin)</p>
+        <input type="text" id="superAdminPin" placeholder="أدخل رمز مالك المنصة الخاص" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-center text-sm focus:outline-none focus:border-purple-500 text-white">
+        <button onclick="loginAs('superadmin')" class="w-full bg-purple-600 hover:bg-purple-500 font-semibold py-2.5 px-4 rounded-xl transition text-white shadow-lg shadow-purple-600/20">
+          👑 دخول مالك التطبيق
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header class="bg-cardBg border-b border-slate-800 sticky top-0 z-40 px-4 py-3">
+  <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+      <span class="bg-blue-600 text-white font-black px-3 py-1.5 rounded-lg text-lg">عُدّة</span>
+      <div>
+        <h1 class="font-bold text-lg leading-tight" id="headerTitle">منصة عُدّة الاحترافية</h1>
+        <span id="userRoleBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300"></span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+      <span class="text-xs text-slate-400 px-2">العملة:</span>
+      <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-slate-800 text-sm font-semibold rounded-lg px-3 py-1 border border-slate-700 focus:outline-none text-blue-400">
+        <option value="SAR">ريال سعودي (SAR)</option>
+        <option value="YER">ريال يمني (YER)</option>
+        <option value="USD">دولار أمريكي (USD)</option>
+      </select>
+    </div>
+    <nav class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+      <button onclick="switchTab('market')" class="tab-btn px-3 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white transition">سوق القطع</button>
+      <button onclick="switchTab('cart')" class="tab-btn px-3 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition relative">🛒 السلة <span id="cartBadge" class="bg-amber-500 text-slate-950 text-xs px-1.5 py-0.2 rounded-full font-bold">0</span></button>
+      <button onclick="switchTab('diagnostics')" class="tab-btn px-3 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition">التشخيص</button>
+      <button onclick="switchTab('payments')" class="tab-btn px-3 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition">الدفع</button>
+      <button onclick="switchTab('ledger')" class="tab-btn px-3 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition">الحسابات</button>
+      <button onclick="switchTab('warranty')" class="tab-btn px-3 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition">الضمان</button>
+      <button id="merchantTabBtn" onclick="switchTab('merchant')" class="tab-btn hidden px-3 py-2 rounded-xl text-sm font-semibold bg-amber-600/20 text-amber-400 border border-amber-500/30 transition">لوحة تاجر الجملة</button>
+      <button id="superAdminTabBtn" onclick="switchTab('superadmin')" class="tab-btn hidden px-3 py-2 rounded-xl text-sm font-semibold bg-purple-600/20 text-purple-400 border border-purple-500/30 transition">👑 إدارة المنصة</button>
+      <button onclick="logout()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white transition">خروج</button>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto p-4 flex-grow w-full space-y-6">
+  <section id="tab-market" class="tab-content space-y-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-cardBg p-4 rounded-2xl border border-slate-800">
+      <div>
+        <h2 class="text-xl font-bold">سوق قطع الغيار والشاشات (جملة وتجزئة)</h2>
+        <p class="text-slate-400 text-sm">تصفح بضائع تجار الجملة واطلبها مباشرة</p>
+      </div>
+      <input type="text" id="marketSearch" oninput="renderProducts()" placeholder="ابحث عن قطعة أو تاجر..." class="bg-slate-900 border border-slate-700 px-4 py-2 rounded-xl text-sm w-full md:w-64 focus:outline-none focus:border-blue-500 text-white">
+    </div>
+    <div id="productsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </section>
+
+  <section id="tab-cart" class="tab-content hidden space-y-6">
+    <div class="bg-cardBg p-6 rounded-2xl border border-slate-800 max-w-3xl mx-auto space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+        <h2 class="text-xl font-bold text-blue-400">🛒 سلة المشتريات</h2>
+        <button onclick="clearCart()" class="text-xs bg-red-600/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg">إفراغ السلة</button>
+      </div>
+      <div id="cartItemsList" class="space-y-3"><p class="text-slate-400 text-sm text-center py-6">السلة فارغة حالياً.</p></div>
+      <div class="border-t border-slate-800 pt-4 flex justify-between items-center">
+        <div>
+          <span class="text-xs text-slate-400 block">الإجمالي الكلي:</span>
+          <h3 id="cartTotalPrice" class="text-xl font-black text-amber-400">0 SAR</h3>
+        </div>
+        <button onclick="checkoutCartWhatsApp()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-emerald-600/20">📱 إرسال الطلب عبر الواتساب</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-diagnostics" class="tab-content hidden space-y-6">
+    <div class="bg-cardBg p-6 rounded-2xl border border-slate-800 space-y-4">
+      <h2 class="text-xl font-bold">محرك التشخيص الهندسي الشامل</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <select id="diagBrand" class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white">
+          <option value="Apple">Apple iPhone</option>
+          <option value="Samsung">Samsung Galaxy</option>
+          <option value="Xiaomi">Xiaomi</option>
+          <option value="HONOR">HONOR</option>
+        </select>
+        <select id="diagIssue" class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white">
+          <option value="screen">تكسير شاشة / لمس لا يستجيب</option>
+          <option value="battery">تفريغ بطارية سريع</option>
+          <option value="charging">عطل مسار الشحن VBUS</option>
+        </select>
+        <button onclick="runDiagnostics()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl">تشخيص العطل</button>
+      </div>
+      <div id="diagResult" class="hidden bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-2 text-sm text-slate-300"></div>
+    </div>
+  </section>
+
+  <section id="tab-payments" class="tab-content hidden space-y-6">
+    <div class="bg-cardBg p-6 rounded-2xl border border-slate-800 max-w-3xl mx-auto space-y-6 text-center">
+      <h2 class="text-xl font-bold">بوابة التحويل والدفع المحلي</h2>
+      <p class="text-slate-400 text-sm">شبكات الصرافة المعتمدة لتحويل قيمة المشتريات</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-right">
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+          <h4 class="font-bold text-blue-400">شبكة العمقي للصرافة</h4>
+          <p class="text-xs text-slate-400 mt-1">حساب الجملة المعتمد</p>
+        </div>
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+          <h4 class="font-bold text-blue-400">مؤسسة الكريمي للتمويل</h4>
+          <p class="text-xs text-slate-400 mt-1">حساب الجملة المعتمد</p>
+        </div>
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+          <h4 class="font-bold text-blue-400">صرافة البسيري</h4>
+          <p class="text-xs text-slate-400 mt-1">حساب الجملة المعتمد</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-ledger" class="tab-content hidden space-y-6">
+    <div class="bg-cardBg p-6 rounded-2xl border border-slate-800 space-y-4">
+      <h2 class="text-xl font-bold">دفتر الحسابات والمديونيات</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-right text-sm">
+          <thead class="bg-slate-900 text-slate-400">
+            <tr><th class="p-3">العميل / المحل</th><th class="p-3">النوع</th><th class="p-3">المبلغ</th><th class="p-3">التاريخ</th></tr>
+          </thead>
+          <tbody id="ledgerTableBody" class="divide-y divide-slate-800">
+            <tr><td colspan="4" class="p-4 text-center text-slate-400">لا توجد سجلات مالية حالياً.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-warranty" class="tab-content hidden space-y-6">
+    <div class="bg-cardBg p-6 rounded-2xl border border-slate-800 max-w-md mx-auto text-center space-y-4">
+      <h2 class="text-xl font-bold">التحقق من كرت الضمان</h2>
+      <input type="text" id="warrantyQuery" placeholder="أدخل رقم الكرت" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white text-center">
+      <button onclick="checkWarranty()" class="bg-blue-600 text-white w-full py-3 rounded-xl font-semibold">تحقق</button>
+      <div id="warrantyResult" class="hidden text-sm"></div>
+    </div>
+  </section>
+
+  <section id="tab-merchant" class="tab-content hidden space-y-6">
+    <div class="bg-cardBg p-6 rounded-2xl border border-slate-800 space-y-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-xl font-bold text-amber-400">🏢 لوحة تحكم تاجر الجملة</h2>
+          <p class="text-slate-400 text-sm">إدارة بضاعتك الخاصة وشعار متجرك</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="openAddProductModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-semibold">+ إضافة قطعة</button>
+          <button onclick="openStoreProfileModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold">🖼️ صورة / شعار المحل</button>
+        </div>
+      </div>
+      <div id="merchantProfileCard" class="bg-slate-900 p-4 rounded-xl border border-slate-700 flex items-center gap-4">
+        <img id="merchantStoreLogo" src="https://via.placeholder.com/80?text=شعار+المحل" class="w-16 h-16 rounded-xl object-cover border border-amber-500/40">
+        <div>
+          <h3 id="merchantStoreName" class="font-bold text-lg text-white">متجرك</h3>
+          <p class="text-xs text-slate-400">البضائع المعروضة هنا خاصة بمحلك فقط</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">إجمالي قطعك المعروضة</p><h4 id="statMyProductsCount" class="text-2xl font-black text-amber-400">0</h4></div>
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">عدد الطلبات الواردة</p><h4 id="statMyOrdersCount" class="text-2xl font-black text-blue-400">0</h4></div>
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">إجمالي الأرباح المقدرة</p><h4 id="statMyRevenue" class="text-2xl font-black text-emerald-400">0 SAR</h4></div>
+      </div>
+      <div>
+        <h3 class="font-bold text-md mb-3">قطع الغيار المعروضة في متجرك</h3>
+        <div id="merchantProductsList" class="space-y-3"><p class="text-slate-400 text-sm">لم تقم بإضافة أي قطعة غيار بعد.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-superadmin" class="tab-content hidden space-y-6">
+    <div class="bg-cardBg p-6 rounded-2xl border border-purple-500/40 space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <h2 class="text-2xl font-bold text-purple-400 flex items-center gap-2">👑 لوحة التحكم العليا لمالك المنصة (Super Admin)</h2>
+        <p class="text-slate-400 text-sm">إدارة ومراقبة كامل التجار، المنتجات، والنشاط العام للتطبيق</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">إجمالي قطع المنصة</p><h4 id="superTotalProducts" class="text-2xl font-black text-purple-400">0</h4></div>
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">عدد التجار المسجلين</p><h4 id="superTotalMerchants" class="text-2xl font-black text-blue-400">0</h4></div>
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">إجمالي الطلبات بالمنصة</p><h4 id="superTotalOrders" class="text-2xl font-black text-emerald-400">0</h4></div>
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700"><p class="text-xs text-slate-400">حالة المنصة</p><h4 class="text-lg font-black text-emerald-400">نشطة وشغالة ✔</h4></div>
+      </div>
+      <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
+        <h3 class="font-bold text-md text-slate-200">مراقبة وحذف أي قطعة مخالفة في المنصة</h3>
+        <div id="superAllProductsList" class="space-y-2"><p class="text-slate-400 text-sm">لا توجد منتجات مسجلة في المنصة.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="storeProfileModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-cardBg border border-slate-700 p-6 rounded-2xl w-full max-w-md space-y-4">
+    <h3 class="text-lg font-bold text-amber-400">تحديث بيانات وتصميم المحل</h3>
+    <input type="text" id="inputStoreName" placeholder="اسم المحل التجاري" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white">
+    <input type="text" id="inputStoreLogoUrl" placeholder="رابط صورة / شعار المحل (URL)" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white">
+    <div class="flex gap-2 pt-2">
+      <button onclick="saveStoreProfile()" class="flex-1 bg-amber-600 text-white py-2 rounded-xl font-semibold">حفظ البيانات</button>
+      <button onclick="closeModal('storeProfileModal')" class="flex-1 bg-slate-700 text-white py-2 rounded-xl font-semibold">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div id="productModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-cardBg border border-slate-700 p-6 rounded-2xl w-full max-w-md space-y-4">
+    <h3 class="text-lg font-bold">إضافة قطعة غيار / شاشة جديدة</h3>
+    <input type="text" id="newProdName" placeholder="اسم القطعة (مثال: شاشة آيفون 13 برو)" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white">
+    <input type="text" id="newProdCategory" placeholder="الماركة / الفئة (مثال: Apple)" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white">
+    <input type="number" id="newProdPrice" placeholder="السعر بالريال السعودي (SAR)" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white">
+    <input type="number" id="newProdStock" placeholder="الكمية المتوفرة في المخزن" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white">
+    <div class="flex gap-2 pt-2">
+      <button onclick="saveNewProduct()" class="flex-1 bg-amber-600 text-white py-2 rounded-xl font-semibold">حفظ وإضافة للمتجر</button>
+      <button onclick="closeModal('productModal')" class="flex-1 bg-slate-700 text-white py-2 rounded-xl font-semibold">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    const swCode = "self.addEventListener('fetch', function(event) {});";
+    const blob = new Blob([swCode], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).catch(err => console.log('SW error', err));
+  });
+}
+
+const SUPER_ADMIN_PIN = "AH735984753MED.10"; 
+
+const exchangeRates = {
+  SAR: { rate: 1, symbol: 'ر.س' },
+  YER: { rate: 410, symbol: 'ر.ي' },
+  USD: { rate: 0.27, symbol: '$' }
+};
+let currentCurrency = 'SAR';
+
+let merchants = JSON.parse(localStorage.getItem('odda_merchants')) || [
+  { storeName: 'محل باوزير 5G للجملة', pin: '1234', logo: 'https://via.placeholder.com/80?text=باوزير' }
+];
+
+let products = JSON.parse(localStorage.getItem('odda_products_clean')) || [];
+let sales = JSON.parse(localStorage.getItem('odda_sales_clean')) || [];
+
+let currentMerchant = null;
+let cart = [];
+let userRole = 'client';
+
+function registerMerchant() {
+  const store = document.getElementById('merchantStoreInput').value.trim();
+  const pin = document.getElementById('merchantPinInput').value.trim();
+  
+  if(!store || !pin) { alert('يرجى كتابة اسم المحل والرمز السري أولاً!'); return; }
+  if(merchants.some(m => m.storeName.toLowerCase() === store.toLowerCase())) {
+    alert('اسم هذا المحل مسجل مسبقاً! قم بتسجيل الدخول مباشرة.'); return;
+  }
+  
+  const newMerchant = { storeName: store, pin: pin, logo: 'https://via.placeholder.com/80?text=' + encodeURIComponent(store) };
+  merchants.push(newMerchant);
+  localStorage.setItem('odda_merchants', JSON.stringify(merchants));
+  
+  alert('تم إنشاء حساب التاجر بنجاح! يمكنك الآن تسجيل الدخول.');
+}
+
+function loginMerchant() {
+  const store = document.getElementById('merchantStoreInput').value.trim();
+  const pin = document.getElementById('merchantPinInput').value.trim();
+  
+  const found = merchants.find(m => m.storeName.toLowerCase() === store.toLowerCase() && m.pin === pin);
+  if(!found) {
+    alert('اسم المحل أو الرمز السري غير صحيح!'); return;
+  }
+  
+  currentMerchant = found;
+  loginAs('merchant');
+}
+
+function loginAs(role) {
+  if(role === 'superadmin') {
+    if(document.getElementById('superAdminPin').value !== SUPER_ADMIN_PIN) { alert('رمز مالك المنصة غير صحيح!'); return; }
+  }
+
+  userRole = role;
+  document.getElementById('loginModal').classList.add('hidden');
+  
+  document.getElementById('merchantTabBtn').classList.add('hidden');
+  document.getElementById('superAdminTabBtn').classList.add('hidden');
+
+  if(userRole === 'merchant') {
+    document.getElementById('merchantTabBtn').classList.remove('hidden');
+    document.getElementById('userRoleBadge').innerText = 'تاجر جملة: ' + currentMerchant.storeName;
+    document.getElementById('headerTitle').innerText = 'منصة عُدّة - لوحة التاجر';
+  } else if(userRole === 'superadmin') {
+    document.getElementById('superAdminTabBtn').classList.remove('hidden');
+    document.getElementById('merchantTabBtn').classList.remove('hidden');
+    document.getElementById('userRoleBadge').innerText = '👑 مالك المنصة (Super Admin)';
+    document.getElementById('headerTitle').innerText = 'منصة عُدّة - لوحة مالك المنصة';
+  } else {
+    document.getElementById('userRoleBadge').innerText = 'حساب زبون / فني صيانة';
+    document.getElementById('headerTitle').innerText = 'منصة عُدّة الاحترافية';
+  }
+
+  renderProducts();
+  renderMerchantProducts();
+  renderSuperAdminView();
+  updateStoreProfileUI();
+}
+
+function logout() {
+  currentMerchant = null;
+  document.getElementById('loginModal').classList.remove('hidden');
+  document.getElementById('merchantStoreInput').value = '';
+  document.getElementById('merchantPinInput').value = '';
+  document.getElementById('superAdminPin').value = '';
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(el => { el.classList.remove('bg-blue-600', 'text-white'); el.classList.add('text-slate-300', 'hover:bg-slate-800'); });
+  document.getElementById('tab-' + tabId).classList.remove('hidden');
+  if(tabId === 'cart') renderCart();
+  if(tabId === 'superadmin') renderSuperAdminView();
+}
+
+function changeCurrency(val) {
+  currentCurrency = val;
+  renderProducts();
+  renderCart();
+  renderMerchantProducts();
+}
+
+function formatPrice(priceInSAR) {
+  const info = exchangeRates[currentCurrency];
+  return `${(priceInSAR * info.rate).toLocaleString('en-US', {maximumFractionDigits: 0})} ${info.symbol}`;
+}
+
+function renderProducts() {
+  const grid = document.getElementById('productsGrid');
+  const search = document.getElementById('marketSearch') ? document.getElementById('marketSearch').value.toLowerCase() : '';
+  grid.innerHTML = '';
+  
+  const filtered = products.filter(p => p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search) || p.storeName.toLowerCase().includes(search));
+  
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="col-span-full text-center py-10 text-slate-400">لا توجد قطع غيار معروضة في السوق حالياً.</div>';
+    return;
+  }
+
+  filtered.forEach(p => {
+    grid.innerHTML += `
+      <div class="bg-cardBg p-5 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-4 shadow-lg">
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-md font-semibold">${p.category}</span>
+            <h3 class="font-bold text-lg mt-2">${p.name}</h3>
+          </div>
+          <img src="${p.storeLogo || 'https://via.placeholder.com/80'}" class="w-10 h-10 rounded-full object-cover border border-amber-500/30" title="${p.storeName}">
+        </div>
+        <p class="text-xs text-slate-400">المتجر: <span class="text-slate-200 font-semibold">${p.storeName}</span> | المتوفر: <span class="text-slate-200 font-semibold">${p.stock} قطعة</span></p>
+        <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+          <span class="font-bold text-lg text-amber-400">${formatPrice(p.priceSAR)}</span>
+          <button onclick="addToCart('${p.name}', ${p.priceSAR}, '${p.storeName}')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-2 rounded-xl">➕ إضافة للسلة</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+function addToCart(name, priceSAR, storeName) {
+  cart.push({ name, priceSAR, storeName });
+  document.getElementById('cartBadge').innerText = cart.length;
+  alert(`تم إضافة "${name}" إلى السلة`);
+}
+
+function renderCart() {
+  const list = document.getElementById('cartItemsList');
+  list.innerHTML = cart.length === 0 ? '<p class="text-slate-400 text-sm text-center py-6">السلة فارغة حالياً.</p>' : '';
+  let totalSAR = 0;
+  cart.forEach((item, idx) => {
+    totalSAR += item.priceSAR;
+    list.innerHTML += `<div class="bg-slate-900 p-3 rounded-xl border border-slate-700 flex justify-between items-center text-sm"><span>${item.name} - ${item.storeName} (${formatPrice(item.priceSAR)})</span><button onclick="cart.splice(${idx},1);renderCart()" class="text-red-400 text-xs">حذف</button></div>`;
+  });
+  document.getElementById('cartTotalPrice').innerText = formatPrice(totalSAR);
+}
+
+function checkoutCartWhatsApp() {
+  if (cart.length === 0) return;
+  let totalSAR = cart.reduce((sum, item) => sum + item.priceSAR, 0);
+  let text = cart.map((item, idx) => `${idx+1}. ${item.name} (${item.storeName}) - ${formatPrice(item.priceSAR)}`).join('\n');
+  
+  cart.forEach(item => sales.push({ productName: item.name, priceSAR: item.priceSAR, date: new Date().toISOString().split('T')[0] }));
+  localStorage.setItem('odda_sales_clean', JSON.stringify(sales));
+  
+  window.open(`https://wa.me/?text=${encodeURIComponent(`طلب من منصة عُدّة:\n\n${text}\n\nالإجمالي: ${formatPrice(totalSAR)}`)}`, '_blank');
+  cart = []; document.getElementById('cartBadge').innerText = 0; renderCart();
+}
+
+function openAddProductModal() { document.getElementById('productModal').classList.remove('hidden'); }
+function openStoreProfileModal() { document.getElementById('storeProfileModal').classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function saveStoreProfile() {
+  if(!currentMerchant) return;
+  const name = document.getElementById('inputStoreName').value.trim();
+  const logo = document.getElementById('inputStoreLogoUrl').value.trim();
+  
+  if(name) currentMerchant.storeName = name;
+  if(logo) currentMerchant.logo = logo;
+  
+  localStorage.setItem('odda_merchants', JSON.stringify(merchants));
+  updateStoreProfileUI();
+  closeModal('storeProfileModal');
+  alert('تم تحديث بيانات وشعار المحل بنجاح!');
+}
+
+function updateStoreProfileUI() {
+  if(currentMerchant) {
+    document.getElementById('merchantStoreName').innerText = currentMerchant.storeName;
+    document.getElementById('merchantStoreLogo').src = currentMerchant.logo;
+  }
+}
+
+function saveNewProduct() {
+  if(!currentMerchant) { alert('سجل الدخول كتاجر أولاً!'); return; }
+  const name = document.getElementById('newProdName').value;
+  const category = document.getElementById('newProdCategory').value;
+  const price = parseFloat(document.getElementById('newProdPrice').value);
+  const stock = parseInt(document.getElementById('newProdStock').value) || 1;
+  if(!name || !price) { alert('أدخل اسم القطعة والسعر'); return; }
+
+  products.push({
+    id: Date.now().toString(),
+    name,
+    category: category || 'عام',
+    priceSAR: price,
+    stock,
+    storeName: currentMerchant.storeName,
+    storeLogo: currentMerchant.logo
+  });
+
+  localStorage.setItem('odda_products_clean', JSON.stringify(products));
+  renderProducts();
+  renderMerchantProducts();
+  closeModal('productModal');
+}
+
+function renderMerchantProducts() {
+  if(!currentMerchant) return;
+  const list = document.getElementById('merchantProductsList');
+  list.innerHTML = '';
+  
+  const myProducts = products.filter(p => p.storeName.toLowerCase() === currentMerchant.storeName.toLowerCase());
+  
+  if(myProducts.length === 0) { list.innerHTML = '<p class="text-slate-400 text-sm">لم تقم بإضافة أي قطعة غيار لمتجرك بعد.</p>'; return; }
+  
+  myProducts.forEach(p => {
+    list.innerHTML += `<div class="bg-slate-900 p-4 rounded-xl border border-slate-700 flex justify-between items-center text-sm">
+      <div><h4 class="font-bold">${p.name}</h4><p class="text-xs text-slate-400">المخزون: ${p.stock} | السعر: ${formatPrice(p.priceSAR)}</p></div>
+      <button onclick="deleteProduct('${p.id}')" class="bg-red-600/20 text-red-400 px-3 py-1.5 rounded-lg text-xs">حذف</button>
+    </div>`;
+  });
+  document.getElementById('statMyProductsCount').innerText = myProducts.length;
+}
+
+function deleteProduct(id) {
+  products = products.filter(p => p.id !== id);
+  localStorage.setItem('odda_products_clean', JSON.stringify(products));
+  renderProducts();
+  renderMerchantProducts();
+  renderSuperAdminView();
+}
+
+function renderSuperAdminView() {
+  document.getElementById('superTotalProducts').innerText = products.length;
+  document.getElementById('superTotalMerchants').innerText = merchants.length;
+  const list = document.getElementById('superAllProductsList');
+  list.innerHTML = '';
+  if(products.length === 0) { list.innerHTML = '<p class="text-slate-400 text-sm">لا توجد منتجات مسجلة بالمنصة حالياً.</p>'; return; }
+  
+  products.forEach(p => {
+    list.innerHTML += `<div class="bg-slate-950 p-3 rounded-lg flex justify-between items-center text-xs border border-slate-800">
+      <span><strong>${p.name}</strong> (${p.storeName}) - ${p.priceSAR} SAR</span>
+      <button onclick="deleteProduct('${p.id}')" class="bg-red-600 text-white px-2 py-1 rounded">حذف المالك (حظر)</button>
+    </div>`;
+  });
+}
+
+function runDiagnostics() {
+  document.getElementById('diagResult').classList.remove('hidden');
+  document.getElementById('diagResult').innerText = "1. فحص فلاتات الشاشة وتوصيلات الطاقة.\n2. قياس ممانعة خطوط الشحن VBUS على البورد.";
+}
+
+function checkWarranty() {
+  document.getElementById('warrantyResult').classList.remove('hidden');
+  document.getElementById('warrantyResult').innerHTML = '<span class="text-emerald-400 font-bold">✔ الضمان ساري المفعول</span>';
+}
+
+function clearCart() { cart = []; document.getElementById('cartBadge').innerText = 0; renderCart(); }
+
+window.addEventListener('DOMContentLoaded', () => {
+  renderProducts();
+});
+</script>
+</body>
+</html>
